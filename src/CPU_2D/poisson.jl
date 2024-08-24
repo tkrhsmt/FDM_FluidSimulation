@@ -50,8 +50,11 @@ function poisson!(ux, uy, pp1, pp2, div, prm)
     maxrep = 1000
     # SOR accelate
     α = 1.4
+    # repeat counter
+    rep_counter = 0
 
     for rep in 1:maxrep
+        rep_counter += 1
 
         # calculate poisson equation (iterative method) pp1 -> pp2
         SOR_method!(pp1, pp2, div, nx1, nx2, ny1, ny2, dx, dy, α)
@@ -72,6 +75,8 @@ function poisson!(ux, uy, pp1, pp2, div, prm)
             break
         end
     end
+
+    return rep_counter
 
 end
 
