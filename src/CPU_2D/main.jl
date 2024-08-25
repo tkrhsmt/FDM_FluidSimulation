@@ -44,8 +44,6 @@ fx1 = zeros(prm.nx + 3, prm.ny + 2)
 fy1 = zeros(prm.nx + 2, prm.ny + 3)
 fx2 = zeros(prm.nx + 3, prm.ny + 2)
 fy2 = zeros(prm.nx + 2, prm.ny + 3)
-fx3 = zeros(prm.nx + 3, prm.ny + 2)
-fy3 = zeros(prm.nx + 2, prm.ny + 3)
 
 # ---------- setting folder ---------- #
 # if there is no "data" folfer, create it
@@ -55,15 +53,17 @@ end
 
 # ---------- main program ---------- #
 
-function MAIN_PROGRAM(prm, ux1, uy1, ux2, uy2, ux3, uy3, pp1, pp2, div, fx1, fx2, fx3, fy1, fy2, fy3)
+function MAIN_PROGRAM(prm, ux1, uy1, ux2, uy2, ux3, uy3, pp1, pp2, div, fx1, fx2, fy1, fy2)
 
-    # initial condition
-    init!(ux1, uy1, prm)
     # initial log
     init_log(prm)
 
-    # first 2 step is euler method
-    for time in prm.istart:prm.istart+1
+    # if starting from the middle, read the checkpoint file
+    if prm.istart == 1
+        # initial condition
+        init!(ux1, uy1, prm)
+
+        # first 1 step is euler method
 
         # 1st FS step (ux1, uy1) -> (ux2, uy2)
         first_velocity!(ux1, uy1, ux2, uy2, prm)
@@ -75,21 +75,21 @@ function MAIN_PROGRAM(prm, ux1, uy1, ux2, uy2, ux3, uy3, pp1, pp2, div, fx1, fx2
         second_velocity!(ux2, uy2, ux3, uy3, pp1, prm)
 
         # preserve adams-bashforth data
-        if time == 1
-            fx3 = (ux3 - ux1) / prm.dt
-            fy3 = (uy3 - uy1) / prm.dt
-        elseif time == 2
-            fx2 = (ux3 - ux1) / prm.dt
-            fy2 = (uy3 - uy1) / prm.dt
-        end
+        #fx2 = (ux3 - ux1) / prm.dt
+        #fy2 = (uy3 - uy1) / prm.dt
 
         # return next step first data
         ux1 = copy(ux3)
         uy1 = copy(uy3)
 
+    else
+        # read the checkpoint file
+        ux1, uy1, fx2, fy2 = inputdata()
     end
 
-    for time in prm.istart+2:prm.iend
+
+    # adams-bashforth after 1 step
+    for time in prm.istart+1:prm.iend
 
         # 1st FS step (ux1, uy1) -> (ux2, uy2)
         first_velocity!(ux1, uy1, ux2, uy2, prm)
@@ -105,14 +105,9 @@ function MAIN_PROGRAM(prm, ux1, uy1, ux2, uy2, ux3, uy3, pp1, pp2, div, fx1, fx2
         fy1 = (uy3 - uy1) / prm.dt
 
         # return next step first data (adams-bashforth method)
-        #ux1 = ux1 + prm.dt * (23/12 * fx1 - 16/12 * fx2 + 5/12 * fx3)
-        #uy1 = uy1 + prm.dt * (23/12 * fy1 - 16/12 * fy2 + 5/12 * fy3)
         ux1 = ux1 + prm.dt * (3 / 2 * fx1 - 1 / 2 * fx2)
         uy1 = uy1 + prm.dt * (3 / 2 * fy1 - 1 / 2 * fy2)
 
-        # adams-bashforth data 3
-        fx3 = copy(fx2)
-        fy3 = copy(fy2)
         # adams-bashforth data 2
         fx2 = copy(fx1)
         fy2 = copy(fy1)
@@ -125,7 +120,7 @@ function MAIN_PROGRAM(prm, ux1, uy1, ux2, uy2, ux3, uy3, pp1, pp2, div, fx1, fx2
         # output VTK file
         if time % prm.ioutput == 0
             filename = pwd() * "/data/output-$(Int(time / prm.ioutput))"
-            output_vtkfile(ux1, uy1, pp1, prm, filename)
+            output_vtkfile(ux1, uy1, pp1, fx2, fy2, prm, filename)
             output_log(time, prm)
         end
 
@@ -136,4 +131,4 @@ function MAIN_PROGRAM(prm, ux1, uy1, ux2, uy2, ux3, uy3, pp1, pp2, div, fx1, fx2
 
 end
 
-MAIN_PROGRAM(prm, ux1, uy1, ux2, uy2, ux3, uy3, pp1, pp2, div, fx1, fx2, fx3, fy1, fy2, fy3)
+MAIN_PROGRAM(prm, ux1, uy1, ux2, uy2, ux3, uy3, pp1, pp2, div, fx1, fx2, fy1, fy2)
