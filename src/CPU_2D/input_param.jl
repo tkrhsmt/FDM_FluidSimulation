@@ -8,8 +8,9 @@
 module Param
 
 using WriteVTK
+using HDF5
 
-export inputfile_param, boundary_ux, boundary_uy, boundary_uz, boundary_pp, init!, output_vtkfile
+export inputfile_param, boundary_ux, boundary_uy, boundary_uz, boundary_pp, init!, output_vtkfile, inputdata
 
 struct parameter
 
@@ -67,7 +68,7 @@ function init!(ux1, uy1, prm)
 
 end
 
-function output_vtkfile(ux, uy, pp, prm, filename)
+function output_vtkfile(ux, uy, pp, fx, fy, prm, filename)
 
     dx = prm.lx / prm.nx
     dy = prm.ly / prm.ny
@@ -82,6 +83,14 @@ function output_vtkfile(ux, uy, pp, prm, filename)
         vtk["pp"] = pp[2:prm.nx+1, 2:prm.ny+1]
     end
 
+    # output checkout file
+    @time h5open("checkpoint", "w") do file
+        write(file,"ux",ux)
+        write(file,"uy",uy)
+        write(file,"fx",fx)
+        write(file,"fy",fy)
+    end
+
 end
 
 function inputfile_param(INPUT_FILE)
@@ -92,6 +101,18 @@ function inputfile_param(INPUT_FILE)
     prm = parameter(NX, NY, LX, LY, ISTART, IEND, DT, ILOG, IOUTPUT, RE)
 
     return prm
+end
+
+function inputdata()
+
+    file = h5open("checkpoint", "r")
+    ux = read(file,"ux")
+    uy = read(file,"uy")
+    fx = read(file,"fx")
+    fy = read(file,"fy")
+
+    close(file)
+    return ux, uy, fx, fy
 end
 
 end
