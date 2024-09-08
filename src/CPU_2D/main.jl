@@ -69,7 +69,8 @@ function MAIN_PROGRAM(prm, ux1, uy1, ux2, uy2, ux3, uy3, pp1, pp2, div, fx1, fx2
         first_velocity!(ux1, uy1, ux2, uy2, prm)
 
         # poisson equation pp1 -> pp1
-        rep = poisson!(ux2, uy2, pp1, pp2, div, prm)
+        #rep = poisson!(ux2, uy2, pp1, pp2, div, prm)
+        rep = poisson_fft(ux2, uy2, pp1, pp2, div, prm)
 
         # 2nd FS step (ux2, uy2) -> (ux3, uy3)
         second_velocity!(ux2, uy2, ux3, uy3, pp1, prm)
@@ -95,7 +96,8 @@ function MAIN_PROGRAM(prm, ux1, uy1, ux2, uy2, ux3, uy3, pp1, pp2, div, fx1, fx2
         first_velocity!(ux1, uy1, ux2, uy2, prm)
 
         # poisson equation pp1 -> pp1
-        rep = poisson!(ux2, uy2, pp1, pp2, div, prm)
+        #rep = poisson!(ux2, uy2, pp1, pp2, div, prm)
+        rep = poisson_fft(ux2, uy2, pp1, pp2, div, prm)
 
         # 2nd FS step (ux2, uy2) -> (ux3, uy3)
         second_velocity!(ux2, uy2, ux3, uy3, pp1, prm)

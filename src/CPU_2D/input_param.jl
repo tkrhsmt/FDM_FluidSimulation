@@ -30,6 +30,9 @@ struct parameter
 
     re :: Float64
 
+    bx :: Int64
+    by :: Int64
+
 end
 
 function boundary_ux(ux, nx1, nx2, ny1, ny2)
@@ -66,6 +69,7 @@ end
 
 function init!(ux1, uy1, prm)
 
+    ux1 .= 1.0
 end
 
 function output_vtkfile(ux, uy, pp, fx, fy, prm, filename)
@@ -98,7 +102,7 @@ function inputfile_param(INPUT_FILE)
     # include parameter file
     include(INPUT_FILE)
     # setting parameter struct
-    prm = parameter(NX, NY, LX, LY, ISTART, IEND, DT, ILOG, IOUTPUT, RE)
+    prm = parameter(NX, NY, LX, LY, ISTART, IEND, DT, ILOG, IOUTPUT, RE, BX, BY)
 
     return prm
 end
