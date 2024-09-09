@@ -10,7 +10,7 @@ module Param
 using WriteVTK
 using HDF5
 
-export inputfile_param, boundary_ux, boundary_uy, boundary_uz, boundary_pp, init!, output_vtkfile, inputdata
+export inputfile_param, output_vtkfile, inputdata
 
 struct parameter
 
@@ -30,91 +30,11 @@ struct parameter
 
     re :: Float64
 
+    poisson_scheme :: Int64
+
     bx :: Int64
     by :: Int64
 
-end
-
-function boundary_ux(ux, nx1, nx2, ny1, ny2)
-
-    #=
-    ux[1:2, :] .= 0.0
-    ux[end-1:end, :] .= 0.0
-    ux[:, 1] = - ux[:, 2] .+ 2.0
-    ux[:, end] = - ux[:, end-1]
-    =#
-    ux[1, :] .= 1.0
-    ux[end, :] .= ux[end - 1, :]
-
-    ux[:, 1] = ux[:, end-1]
-    ux[:, end] = ux[:, 2]
-
-    nx = nx2 - nx1 + 1
-    ny = ny2 - ny1 + 1
-    dx = 2.0 / nx
-    dy = 1.0 / ny
-
-    for j in ny1:ny2
-        y = dy * (j - ny1) - 0.5
-        for i in nx1:nx2
-            x = dx * (i - nx1) - 0.5
-            l = sqrt(x^2 + y^2)
-            if l < 0.1
-                ux[i, j] = 0.0
-            end
-        end
-    end
-
-end
-
-function boundary_uy(uy, nx1, nx2, ny1, ny2)
-
-    #=
-    uy[:, 1:2] .= 0.0
-    uy[:, end-1:end] .= 0.0
-    uy[1, :] = - uy[2, :]
-    uy[end, :] = - uy[end-1, :]
-    =#
-    uy[:, 1] = uy[:, end-1]
-    uy[:, end] = uy[:, 2]
-
-    uy[1, :] = - uy[2, :]
-    uy[end, :] = uy[end-1, :]
-
-    nx = nx2 - nx1 + 1
-    ny = ny2 - ny1 + 1
-    dx = 2.0 / nx
-    dy = 1.0 / ny
-
-    for j in ny1:ny2
-        y = dy * (j - ny1) - 0.5
-        for i in nx1:nx2
-            x = dx * (i - nx1) - 0.5
-            l = sqrt(x^2 + y^2)
-            if l < 0.1
-                uy[i, j] = 0.0
-            end
-        end
-    end
-
-end
-
-function boundary_pp(pp, nx1, nx2, ny1, ny2)
-
-    pp[1, :] = pp[2, :]
-    pp[end, :] = pp[end-1, :]
-    pp[:, 1] = pp[:, 2]
-    #pp[:, 1] .= 0.0
-    pp[:, end] = pp[:, end-1]
-
-    pav = sum(pp)
-    pp = pp .- pav
-
-end
-
-function init!(ux1, uy1, prm)
-
-    ux1 .= 1.0
 end
 
 function output_vtkfile(ux, uy, pp, fx, fy, prm, filename)
@@ -147,9 +67,9 @@ function inputfile_param(INPUT_FILE)
     # include parameter file
     include(INPUT_FILE)
     # setting parameter struct
-    prm = parameter(NX, NY, LX, LY, ISTART, IEND, DT, ILOG, IOUTPUT, RE, BX, BY)
+    prm = parameter(NX, NY, LX, LY, ISTART, IEND, DT, ILOG, IOUTPUT, RE, POISSON_SCHEME, BX, BY)
 
-    return prm
+    return prm, boundary_ux, boundary_uy, boundary_pp, init!, force_ux, force_uy
 end
 
 function inputdata()

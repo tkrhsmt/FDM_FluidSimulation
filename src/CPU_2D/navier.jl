@@ -7,9 +7,6 @@
 
 module Navier
 
-include("input_param.jl")
-using .Param
-
 export first_velocity!, second_velocity!
 
 # 2nd-order central difference
@@ -19,7 +16,7 @@ ddx2_1(u1, u2, u3, dx) = (u3 - 2 * u2 + u1) / (dx^2)
 # 2nd-order central interpolation
 int1(u1, u2) = (u1 + u2) / 2.0
 
-function first_velocity!(ux1, uy1, ux2, uy2, prm)
+function first_velocity!(ux1, uy1, ux2, uy2, prm, boundary_ux, boundary_uy, force_ux, force_uy)
 
     # the range of x-direction velocity components not including the boundaries
     nx1 = 2
@@ -57,6 +54,9 @@ function first_velocity!(ux1, uy1, ux2, uy2, prm)
         end
     end
 
+    # add x-direction velocity force
+    force_ux(ux2, nx1, nx2, ny1, ny2)
+
     # add x-direction boundary condition
     boundary_ux(ux2, nx1, nx2, ny1, ny2)
 
@@ -92,12 +92,15 @@ function first_velocity!(ux1, uy1, ux2, uy2, prm)
         end
     end
 
+    # add y-direction velocity force
+    force_uy(uy2, nx1, nx2, ny1, ny2)
+
     # add y-direction boundary condition
     boundary_uy(uy2, nx1, nx2, ny1, ny2)
 
 end
 
-function second_velocity!(ux1, uy1, ux2, uy2, pp, prm)
+function second_velocity!(ux1, uy1, ux2, uy2, pp, prm, boundary_ux, boundary_uy)
 
     # the range of x-direction velocity components not including the boundaries
     nx1 = 2

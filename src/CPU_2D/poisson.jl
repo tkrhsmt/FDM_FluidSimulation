@@ -7,8 +7,6 @@
 
 module Poisson
 
-include("input_param.jl")
-using .Param
 using FFTW
 
 export poisson!, poisson_fft
@@ -16,7 +14,7 @@ export poisson!, poisson_fft
 # 2nd-order central difference
 ddx1_1(u1, u2, dx) = (u2 - u1) / (dx)
 
-function poisson_fft(ux, uy, pp1, pp2, divu, prm)
+function poisson_fft(ux, uy, pp1, pp2, divu, prm, boundary_pp)
 
     # the range of pressure components not including the boundaries
     nx1 = 2
@@ -171,7 +169,7 @@ function fft_calculate_11!(pp_f, divu_f, prm, dx, dy, kx, ky)
     return pp_f
 end
 
-function poisson!(ux, uy, pp1, pp2, div, prm)
+function poisson!(ux, uy, pp1, pp2, div, prm, boundary_pp)
 
     # the range of pressure components not including the boundaries
     nx1 = 2
@@ -213,7 +211,7 @@ function poisson!(ux, uy, pp1, pp2, div, prm)
         rep_counter += 1
 
         #iterate_method!(pp1, pp2, div, nx1, nx2, ny1, ny2, dx, dy, α)
-        multigrid_v_cycle!(pp1, pp2, div, nx1, nx2, ny1, ny2, dx, dy, α; num_cycles=1)
+        multigrid_v_cycle!(pp1, pp2, div, nx1, nx2, ny1, ny2, dx, dy, α, boundary_pp; num_cycles=1)
 
         # check residual
         check = check_residual(pp1, div, eps, nx1, nx2, ny1, ny2, dx, dy)
@@ -227,7 +225,7 @@ function poisson!(ux, uy, pp1, pp2, div, prm)
 
 end
 
-function multigrid_v_cycle!(pp1, pp2, f, nx1, nx2, ny1, ny2, dx, dy, α; num_cycles=1)
+function multigrid_v_cycle!(pp1, pp2, f, nx1, nx2, ny1, ny2, dx, dy, α, boundary_pp; num_cycles=1)
 
     # x-direction spatial size
     nx = nx2 - nx1 + 1
@@ -237,7 +235,7 @@ function multigrid_v_cycle!(pp1, pp2, f, nx1, nx2, ny1, ny2, dx, dy, α; num_cyc
     for time in 1:num_cycles
 
         # Pre-smoothing
-        iterate_method!(pp1, pp2, f, nx1, nx2, ny1, ny2, dx, dy, α)
+        iterate_method!(pp1, pp2, f, nx1, nx2, ny1, ny2, dx, dy, α, boundary_pp)
 
         # Compute residual
         res = copy(f)
@@ -250,13 +248,13 @@ function multigrid_v_cycle!(pp1, pp2, f, nx1, nx2, ny1, ny2, dx, dy, α; num_cyc
 
         # Solve on coarse grid (recursively or directly)
         if nx > 2 && ny > 2
-            multigrid_v_cycle!(u_c1, u_c2, res_c, nxc1, nxc2, nyc1, nyc2, 2 * dx, 2 * dy, α, num_cycles=1)
+            multigrid_v_cycle!(u_c1, u_c2, res_c, nxc1, nxc2, nyc1, nyc2, 2 * dx, 2 * dy, α, boundary_pp, num_cycles=1)
         end
 
         # Prolongate and correct
         pp1 .+= prolongate(u_c1, nx, ny, nxc1, nxc2, nyc1, nyc2)
 
-        iterate_method!(pp1, pp2, f, nx1, nx2, ny1, ny2, dx, dy, α)
+        iterate_method!(pp1, pp2, f, nx1, nx2, ny1, ny2, dx, dy, α, boundary_pp)
 
     end
     return pp1
@@ -333,7 +331,7 @@ function compute_grid_residual!(res, pp, divx, nx1, nx2, ny1, ny2, dx, dy)
     #return maximum(abs.(res))
 end
 
-function iterate_method!(pp1, pp2, div, nx1, nx2, ny1, ny2, dx, dy, α)
+function iterate_method!(pp1, pp2, div, nx1, nx2, ny1, ny2, dx, dy, α, boundary_pp)
 
     for _ in 1:2
         # calculate poisson equation (iterative method) pp1 -> pp2
