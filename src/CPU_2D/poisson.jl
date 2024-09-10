@@ -133,9 +133,10 @@ function fft_calculate_00!(pp_f, divu_f, prm, dx, dy, kx, ky)
     for j in 1:prm.ny
         for i in 1:prm.nx
             tmp = (2.0/(dx*dx))*(cos(2*pi*kx[i]) - 1.0) + (2.0/(dy*dy))*(cos(2*pi*ky[j]) - 1.0)
-            pp_f[i, j] = divu_f[i,j]/tmp
+            pp_f[i, j] = divu_f[i,j]/(tmp+1.0e-8)
         end
     end
+    pp_f[1,1] = 0.0
     return pp_f
 end
 

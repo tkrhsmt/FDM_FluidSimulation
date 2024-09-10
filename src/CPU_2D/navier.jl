@@ -55,7 +55,7 @@ function first_velocity!(ux1, uy1, ux2, uy2, prm, boundary_ux, boundary_uy, forc
     end
 
     # add x-direction velocity force
-    force_ux(ux2, nx1, nx2, ny1, ny2)
+    force_ux(ux2, nx1, nx2, ny1, ny2, prm.dt)
 
     # add x-direction boundary condition
     boundary_ux(ux2, nx1, nx2, ny1, ny2)
@@ -93,7 +93,7 @@ function first_velocity!(ux1, uy1, ux2, uy2, prm, boundary_ux, boundary_uy, forc
     end
 
     # add y-direction velocity force
-    force_uy(uy2, nx1, nx2, ny1, ny2)
+    force_uy(uy2, nx1, nx2, ny1, ny2, prm.dt)
 
     # add y-direction boundary condition
     boundary_uy(uy2, nx1, nx2, ny1, ny2)

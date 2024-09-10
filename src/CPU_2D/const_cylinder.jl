@@ -122,10 +122,10 @@ end
 
 # velocity force ------------------------------
 
-function force_ux(ux, nx1, nx2, ny1, ny2)
+function force_ux(ux, nx1, nx2, ny1, ny2, dt)
 
 end
 
-function force_uy(uy, nx1, nx2, ny1, ny2)
+function force_uy(uy, nx1, nx2, ny1, ny2, dt)
 
 end
