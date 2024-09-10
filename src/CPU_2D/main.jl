@@ -21,7 +21,7 @@ using .Log
 INPUT_FILE = pwd() * "/" * ARGS[1]
 
 # input parameter
-prm = inputfile_param(INPUT_FILE)
+prm, boundary_ux, boundary_uy, boundary_pp, init!, force_ux, force_uy = inputfile_param(INPUT_FILE)
 
 # ---------- setting vaiable ---------- #
 # old velocity (x and y direction)
@@ -51,6 +51,13 @@ if isdir("data") == false
     mkdir("data")
 end
 
+# --------- setting function --------- #
+# select poisson solver
+poisson_solver = poisson_fft
+if prm.poisson_scheme == 1
+    poisson_solver = poisson!
+end
+
 # ---------- main program ---------- #
 
 function MAIN_PROGRAM(prm, ux1, uy1, ux2, uy2, ux3, uy3, pp1, pp2, div, fx1, fx2, fy1, fy2)
@@ -66,13 +73,14 @@ function MAIN_PROGRAM(prm, ux1, uy1, ux2, uy2, ux3, uy3, pp1, pp2, div, fx1, fx2
         # first 1 step is euler method
 
         # 1st FS step (ux1, uy1) -> (ux2, uy2)
-        first_velocity!(ux1, uy1, ux2, uy2, prm)
+        first_velocity!(ux1, uy1, ux2, uy2, prm, boundary_ux, boundary_uy, force_ux, force_uy)
 
         # poisson equation pp1 -> pp1
-        rep = poisson!(ux2, uy2, pp1, pp2, div, prm)
+        #rep = poisson!(ux2, uy2, pp1, pp2, div, prm, boundary_pp)
+        rep = poisson_solver(ux2, uy2, pp1, pp2, div, prm, boundary_pp)
 
         # 2nd FS step (ux2, uy2) -> (ux3, uy3)
-        second_velocity!(ux2, uy2, ux3, uy3, pp1, prm)
+        second_velocity!(ux2, uy2, ux3, uy3, pp1, prm, boundary_ux, boundary_uy)
 
         # preserve adams-bashforth data
         #fx2 = (ux3 - ux1) / prm.dt
@@ -92,13 +100,14 @@ function MAIN_PROGRAM(prm, ux1, uy1, ux2, uy2, ux3, uy3, pp1, pp2, div, fx1, fx2
     for time in prm.istart+1:prm.iend
 
         # 1st FS step (ux1, uy1) -> (ux2, uy2)
-        first_velocity!(ux1, uy1, ux2, uy2, prm)
+        first_velocity!(ux1, uy1, ux2, uy2, prm, boundary_ux, boundary_uy, force_ux, force_uy)
 
         # poisson equation pp1 -> pp1
-        rep = poisson!(ux2, uy2, pp1, pp2, div, prm)
+        #rep = poisson!(ux2, uy2, pp1, pp2, div, prm, boundary_pp)
+        rep = poisson_solver(ux2, uy2, pp1, pp2, div, prm, boundary_pp)
 
         # 2nd FS step (ux2, uy2) -> (ux3, uy3)
-        second_velocity!(ux2, uy2, ux3, uy3, pp1, prm)
+        second_velocity!(ux2, uy2, ux3, uy3, pp1, prm, boundary_ux, boundary_uy)
 
         # adams-bashforth data 1
         fx1 = (ux3 - ux1) / prm.dt

@@ -7,15 +7,170 @@
 
 module Poisson
 
-include("input_param.jl")
-using .Param
+using FFTW
 
-export poisson!
+export poisson!, poisson_fft
 
 # 2nd-order central difference
 ddx1_1(u1, u2, dx) = (u2 - u1) / (dx)
 
-function poisson!(ux, uy, pp1, pp2, div, prm)
+function poisson_fft(ux, uy, pp1, pp2, divu, prm, boundary_pp)
+
+    # the range of pressure components not including the boundaries
+    nx1 = 2
+    nx2 = prm.nx + 1
+    ny1 = 2
+    ny2 = prm.ny + 1
+
+    # spatial step size
+    dx = prm.lx / prm.nx
+    dy = prm.ly / prm.ny
+
+    # calculate velocity divergence
+    for j in ny1:ny2
+        for i in nx1:nx2
+            # du/dx
+            tmp1 = ddx1_1(ux[i, j], ux[i+1, j], dx)
+            # dv/dy
+            tmp2 = ddx1_1(uy[i, j], uy[i, j+1], dy)
+            # du/dx + dv/dy
+            divu[i, j] = tmp1 + tmp2
+        end
+    end
+
+    # divide by time span
+    divu /= prm.dt
+
+    # wave number (periodic boundary)
+    kx = fftfreq(prm.nx)
+    ky = fftfreq(prm.ny)
+
+
+    # calculate pp_f
+    if prm.bx == 0 && prm.by == 0
+
+        pp_f = zeros(Complex{Float64}, prm.nx, prm.ny)
+
+        divu_f = FFTW.fft(divu[2:end-1, 2:end-1])
+        pp_f = fft_calculate_00!(pp_f, divu_f, prm, dx, dy, kx, ky)
+        pp1[2:end-1, 2:end-1] = real(FFTW.ifft(pp_f))
+        boundary_pp_00!(pp1)
+
+    elseif prm.bx == 1 && prm.by == 0
+
+        pp_f = zeros(Complex{Float64}, prm.nx, prm.ny)
+
+        divu_f1 = FFTW.r2r(divu[2:end-1, 2:end-1],FFTW.REDFT00, 1)
+        divu_f = FFTW.fft(divu_f1, 2)
+        pp_f = fft_calculate_10!(pp_f, divu_f, prm, dx, dy, kx, ky)
+        pp_f1 = real(FFTW.ifft(pp_f, 2))
+        pp1[2:end-1, 2:end-1] = FFTW.r2r(pp_f1,FFTW.REDFT00, 1)/(2*prm.nx)
+        boundary_pp_10!(pp1)
+
+    elseif prm.bx == 0 && prm.by == 1
+
+        pp_f = zeros(Complex{Float64}, prm.nx, prm.ny)
+
+        divu_f1 = FFTW.r2r(divu[2:end-1, 2:end-1],FFTW.REDFT00, 2)
+        divu_f = FFTW.fft(divu_f1, 1)
+        pp_f = fft_calculate_01!(pp_f, divu_f, prm, dx, dy, kx, ky)
+        pp_f1 = real(FFTW.ifft(pp_f, 1))
+        pp1[2:end-1, 2:end-1] = FFTW.r2r(pp_f1,FFTW.REDFT00, 2)/(2*prm.ny)
+        boundary_pp_01!(pp1)
+
+    else
+
+        pp_f = zeros(prm.nx, prm.ny)
+
+        divu_f = FFTW.r2r(divu[2:end-1, 2:end-1],FFTW.REDFT00)
+        pp_f = fft_calculate_11!(pp_f, divu_f, prm, dx, dy, kx, ky)
+        pp1[2:end-1, 2:end-1] = FFTW.r2r(pp_f,FFTW.REDFT00)/((2*prm.nx)*(2*prm.ny))
+        boundary_pp_11!(pp1)
+
+    end
+
+    return 1
+
+end
+
+function boundary_pp_11!(pp)
+
+    pp[1, :] = pp[2, :]
+    pp[end, :] = pp[end-1, :]
+    pp[:, 1] = pp[:, 2]
+    pp[:, end] = pp[:, end-1]
+
+end
+
+function boundary_pp_01!(pp)
+
+    pp[1, :] = pp[end-1, :]
+    pp[end, :] = pp[2, :]
+    pp[:, 1] = pp[:, 2]
+    pp[:, end] = pp[:, end-1]
+
+end
+
+function boundary_pp_10!(pp)
+
+    pp[1, :] = pp[2, :]
+    pp[end, :] = pp[end-1, :]
+    pp[:, 1] = pp[:, end-1]
+    pp[:, end] = pp[:, 2]
+
+end
+
+function boundary_pp_00!(pp)
+
+    pp[1, :] = pp[end-1, :]
+    pp[end, :] = pp[2, :]
+    pp[:, 1] = pp[:, end-1]
+    pp[:, end] = pp[:, 2]
+
+end
+
+function fft_calculate_00!(pp_f, divu_f, prm, dx, dy, kx, ky)
+    for j in 1:prm.ny
+        for i in 1:prm.nx
+            tmp = (2.0/(dx*dx))*(cos(2*pi*kx[i]) - 1.0) + (2.0/(dy*dy))*(cos(2*pi*ky[j]) - 1.0)
+            pp_f[i, j] = divu_f[i,j]/(tmp+1.0e-8)
+        end
+    end
+    pp_f[1,1] = 0.0
+    return pp_f
+end
+
+function fft_calculate_10!(pp_f, divu_f, prm, dx, dy, kx, ky)
+    for j in 1:prm.ny
+        for i in 1:prm.nx
+            tmp = (2.0/(dx*dx))*(cos(pi*i/prm.nx) - 1.0) + (2.0/(dy*dy))*(cos(2*pi*ky[j]) - 1.0)
+            pp_f[i, j] = divu_f[i,j]/tmp
+        end
+    end
+    return pp_f
+end
+
+function fft_calculate_01!(pp_f, divu_f, prm, dx, dy, kx, ky)
+    for j in 1:prm.ny
+        for i in 1:prm.nx
+            tmp = (2.0/(dx*dx))*(cos(2*pi*kx[i]) - 1.0) + (2.0/(dy*dy))*(cos(pi*j/prm.ny) - 1.0)
+            pp_f[i, j] = divu_f[i,j]/tmp
+        end
+    end
+    return pp_f
+end
+
+function fft_calculate_11!(pp_f, divu_f, prm, dx, dy, kx, ky)
+    for j in 1:prm.ny
+        for i in 1:prm.nx
+            tmp = (2.0/(dx*dx))*(cos(pi*i/prm.nx) - 1.0) + (2.0/(dy*dy))*(cos(pi*j/prm.ny) - 1.0)
+            pp_f[i, j] = divu_f[i,j]/tmp
+        end
+    end
+    return pp_f
+end
+
+function poisson!(ux, uy, pp1, pp2, div, prm, boundary_pp)
 
     # the range of pressure components not including the boundaries
     nx1 = 2
@@ -57,7 +212,7 @@ function poisson!(ux, uy, pp1, pp2, div, prm)
         rep_counter += 1
 
         #iterate_method!(pp1, pp2, div, nx1, nx2, ny1, ny2, dx, dy, α)
-        multigrid_v_cycle!(pp1, pp2, div, nx1, nx2, ny1, ny2, dx, dy, α; num_cycles=1)
+        multigrid_v_cycle!(pp1, pp2, div, nx1, nx2, ny1, ny2, dx, dy, α, boundary_pp; num_cycles=1)
 
         # check residual
         check = check_residual(pp1, div, eps, nx1, nx2, ny1, ny2, dx, dy)
@@ -71,7 +226,7 @@ function poisson!(ux, uy, pp1, pp2, div, prm)
 
 end
 
-function multigrid_v_cycle!(pp1, pp2, f, nx1, nx2, ny1, ny2, dx, dy, α; num_cycles=1)
+function multigrid_v_cycle!(pp1, pp2, f, nx1, nx2, ny1, ny2, dx, dy, α, boundary_pp; num_cycles=1)
 
     # x-direction spatial size
     nx = nx2 - nx1 + 1
@@ -81,7 +236,7 @@ function multigrid_v_cycle!(pp1, pp2, f, nx1, nx2, ny1, ny2, dx, dy, α; num_cyc
     for time in 1:num_cycles
 
         # Pre-smoothing
-        iterate_method!(pp1, pp2, f, nx1, nx2, ny1, ny2, dx, dy, α)
+        iterate_method!(pp1, pp2, f, nx1, nx2, ny1, ny2, dx, dy, α, boundary_pp)
 
         # Compute residual
         res = copy(f)
@@ -94,13 +249,13 @@ function multigrid_v_cycle!(pp1, pp2, f, nx1, nx2, ny1, ny2, dx, dy, α; num_cyc
 
         # Solve on coarse grid (recursively or directly)
         if nx > 2 && ny > 2
-            multigrid_v_cycle!(u_c1, u_c2, res_c, nxc1, nxc2, nyc1, nyc2, 2 * dx, 2 * dy, α, num_cycles=1)
+            multigrid_v_cycle!(u_c1, u_c2, res_c, nxc1, nxc2, nyc1, nyc2, 2 * dx, 2 * dy, α, boundary_pp, num_cycles=1)
         end
 
         # Prolongate and correct
         pp1 .+= prolongate(u_c1, nx, ny, nxc1, nxc2, nyc1, nyc2)
 
-        iterate_method!(pp1, pp2, f, nx1, nx2, ny1, ny2, dx, dy, α)
+        iterate_method!(pp1, pp2, f, nx1, nx2, ny1, ny2, dx, dy, α, boundary_pp)
 
     end
     return pp1
@@ -177,7 +332,7 @@ function compute_grid_residual!(res, pp, divx, nx1, nx2, ny1, ny2, dx, dy)
     #return maximum(abs.(res))
 end
 
-function iterate_method!(pp1, pp2, div, nx1, nx2, ny1, ny2, dx, dy, α)
+function iterate_method!(pp1, pp2, div, nx1, nx2, ny1, ny2, dx, dy, α, boundary_pp)
 
     for _ in 1:2
         # calculate poisson equation (iterative method) pp1 -> pp2
