@@ -90,7 +90,7 @@ function MAIN_PROGRAM(prm, ux1, uy1, uz1, ux2, uy2, uz2, ux3, uy3, uz3, pp1, pp2
 
     else
         # read the checkpoint file
-        ux1, uy1, fx2, fy2, fz2 = inputdata()
+        ux1, uy1, uz1, fx2, fy2, fz2 = inputdata()
     end
 
 
