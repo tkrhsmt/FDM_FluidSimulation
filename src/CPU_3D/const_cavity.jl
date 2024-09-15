@@ -37,6 +37,11 @@ BX = 1
 BY = 1
 BZ = 1
 
+# LES or DNS
+LES = false
+# LES model (1: smagorinsky, 2:coherent structure model)
+LES_MODEL = 1
+
 # boundary condition ------------------------------
 
 function boundary_ux(ux, nx1, nx2, ny1, ny2, nz1, nz2)

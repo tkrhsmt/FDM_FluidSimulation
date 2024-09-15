@@ -4,9 +4,9 @@
 # --------------------------------------------------
 
 # number of lattices
-NX = 128
-NY = 64
-NZ = 64
+NX = 64
+NY = 32
+NZ = 32
 
 # length of flow field
 LX = 2.0
@@ -27,7 +27,7 @@ ILOG = 10
 IOUTPUT = 100
 
 # reynolds number
-RE = 2000
+RE = 5000
 
 # poisson solver (0 : FFT spectral method, 1 : multigrid method)
 POISSON_SCHEME = 0
@@ -37,12 +37,18 @@ BX = 1
 BY = 0
 BZ = 0
 
+# LES or DNS
+LES = true
+# LES model (1: smagorinsky, 2:coherent structure model)
+LES_MODEL = 2
+
 # boundary condition ------------------------------
 
 function boundary_ux(ux, nx1, nx2, ny1, ny2, nz1, nz2)
 
     ux[1:2, :, :] .= 1.0
-    ux[end, :, :] = ux[end-1, :, :]
+    ux[end, :, :] = ux[end-2, :, :]
+    ux[end-1, :, :] = ux[end-2, :, :]
     ux[:, 1, :] = ux[:, end-1, :]
     ux[:, end, :] = ux[:, 2, :]
     ux[:, :, 1] = ux[:, :, end-1]
@@ -103,8 +109,9 @@ function boundary_uz(uz, nx1, nx2, ny1, ny2, nz1, nz2)
     uz[end, :, :] = uz[end-1, :, :]
     uz[:, 1, :] = uz[:, end-1, :]
     uz[:, end, :] = uz[:, 2, :]
-    uz[:, :, 1] = uz[:, :, end-1]
-    uz[:, :, end] = uz[:, :, 2]
+    uz[:, :, 1] = uz[:, :, end-2]
+    uz[:, :, 2] = uz[:, :, end-1]
+    uz[:, :, end] = uz[:, :, 3]
 
     nx = nx2 - nx1 + 1
     ny = ny2 - ny1 + 1

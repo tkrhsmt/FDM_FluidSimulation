@@ -38,6 +38,9 @@ struct parameter
     by :: Int64
     bz :: Int64
 
+    les :: Bool
+    les_model :: Int64
+
 end
 
 function output_vtkfile(ux, uy, uz, pp, fx, fy, fz, prm, filename)
@@ -75,7 +78,7 @@ function inputfile_param(INPUT_FILE)
     # include parameter file
     include(INPUT_FILE)
     # setting parameter struct
-    prm = parameter(NX, NY, NZ, LX, LY, LZ, ISTART, IEND, DT, ILOG, IOUTPUT, RE, POISSON_SCHEME, BX, BY, BZ)
+    prm = parameter(NX, NY, NZ, LX, LY, LZ, ISTART, IEND, DT, ILOG, IOUTPUT, RE, POISSON_SCHEME, BX, BY, BZ, LES, LES_MODEL)
 
     return prm, boundary_ux, boundary_uy, boundary_uz, init!, force_ux, force_uy, force_uz
 end
