@@ -9,6 +9,9 @@ module Navier
 
 export first_velocity!, second_velocity!
 
+include("les_model.jl")
+using .Les
+
 # 2nd-order central difference
 ddx1_1(u1, u2, dx) = (u2 - u1) / (dx)
 ddx2_1(u1, u2, u3, dx) = (u3 - 2 * u2 + u1) / (dx^2)
@@ -70,9 +73,6 @@ function first_velocity!(ux1, uy1, uz1, ux2, uy2, uz2, prm, boundary_ux, boundar
     # add x-direction velocity force
     force_ux(ux2, nx1, nx2, ny1, ny2, nz1, nz2, prm.dt)
 
-    # add x-direction boundary condition
-    boundary_ux(ux2, nx1, nx2, ny1, ny2, nz1, nz2)
-
     # the range of y-direction velocity components not including the boundaries
     nx1 = 2
     nx2 = prm.nx + 1
@@ -119,9 +119,6 @@ function first_velocity!(ux1, uy1, uz1, ux2, uy2, uz2, prm, boundary_ux, boundar
 
     # add y-direction velocity force
     force_uy(uy2, nx1, nx2, ny1, ny2, nz1, nz2, prm.dt)
-
-    # add y-direction boundary condition
-    boundary_uy(uy2, nx1, nx2, ny1, ny2, nz1, nz2)
 
     # the range of z-direction velocity components not including the boundaries
     nx1 = 2
@@ -170,6 +167,20 @@ function first_velocity!(ux1, uy1, uz1, ux2, uy2, uz2, prm, boundary_ux, boundar
 
     # add z-direction velocity force
     force_uz(uz2, nx1, nx2, ny1, ny2, nz1, nz2, prm.dt)
+
+    # les model
+    if prm.les == true
+        dτ1, dτ2, dτ3 = les_model(ux1, uy1, uz1, prm)
+        ux2 = ux2 - prm.dt * dτ1
+        uy2 = uy2 - prm.dt * dτ2
+        uz2 = uz2 - prm.dt * dτ3
+    end
+
+    # add x-direction boundary condition
+    boundary_ux(ux2, nx1, nx2, ny1, ny2, nz1, nz2)
+
+    # add y-direction boundary condition
+    boundary_uy(uy2, nx1, nx2, ny1, ny2, nz1, nz2)
 
     # add z-direction boundary condition
     boundary_uz(uz2, nx1, nx2, ny1, ny2, nz1, nz2)
